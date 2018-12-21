@@ -1,0 +1,262 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+
+<Script file="InMyBags.lua"/>
+
+<Frame name="InMyBags" enableMouse="true" parent="UIParent" hidden="true" inherits="PortraitFrameTemplate" movable="true" frameStrata="HIGH">
+	<Size x="710" y="472" />
+	<Anchors>
+		<Anchor point="CENTER" />
+	</Anchors>
+
+	<Layers>
+		<Layer level="BACKGROUND">
+			<FontString inherits="GameFontNormalLarge" justifyV="MIDDLE" setAllPoints="true" text="Item">
+				<Size x="100" y="36" />
+				<Anchors>
+					<Anchor point="TOPLEFT" relativePoint="TOPLEFT" relativeTo="$parentTopLeftCorner" >
+						<Offset x="70" y="-34" />
+					</Anchor>
+				</Anchors>
+			</FontString>				
+			<FontString inherits="GameFontNormalLarge" justifyV="MIDDLE" setAllPoints="true" text="Held by">
+				<Size x="150" y="36" />
+				<Anchors>
+					<Anchor point="TOPLEFT" relativePoint="TOPLEFT" relativeTo="$parentTopLeftCorner" >
+						<Offset x="320" y="-34" />
+					</Anchor>
+				</Anchors>
+			</FontString>				
+			<FontString name="InMyBagsVendor" inherits="GameFontNormal" justifyV="TOP" justifyH="RIGHT" setAllPoints="true">
+				<Size x="180" y="32" />
+				<Anchors>
+					<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT" relativeTo="$parent" >
+						<Offset x="-10" y="-34" />
+					</Anchor>
+				</Anchors>
+			</FontString>				
+		</Layer>
+	</Layers>
+
+	<Scripts>
+		<OnLoad>
+			InMyBags_OnLoad(self)
+		</OnLoad>
+		<OnEvent>
+			InMyBags_OnEvent(self, event, ...)
+		</OnEvent>
+		<OnShow>
+			PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN);		<!-- Changed by Blizzard in 7.3 -->
+		</OnShow>
+		<OnHide>
+			PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE);	<!-- Changed by Blizzard in 7.3 -->
+		</OnHide>
+
+        <OnDragStart>
+            self:StartMoving()
+        </OnDragStart>
+        <OnDragStop>
+            self:StopMovingOrSizing()
+        </OnDragStop>
+
+	</Scripts>
+
+	<Frames>	
+
+		<Frame name="InMyBagsFrame01" inherits="InMyBagsLineFrameTemplate">
+			<Anchors>
+				<Anchor point="TOPLEFT" relativePoint="TOPLEFT" relativeTo="$parentTopLeftCorner" >
+					<Offset x="20" y="-70" />
+				</Anchor>
+			</Anchors>
+			
+			<Frames>
+				<Frame name="InMyBagsLine01" inherits="InMyBagsLineItemTemplate">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeTo="InMyBagsFrame01" />
+					</Anchors>
+				</Frame>
+			</Frames>
+		</Frame>
+
+		<Frame name="InMyBagsFrame02" inherits="InMyBagsLineFrameTemplate">
+			<Anchors>
+				<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" relativeTo="InMyBagsFrame01">
+					<Offset x="0" y="-4" />
+				</Anchor>
+			</Anchors>
+			
+			<Frames>
+				<Frame name="InMyBagsLine02" inherits="InMyBagsLineItemTemplate">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeTo="InMyBagsFrame02" />
+					</Anchors>
+				</Frame>
+			</Frames>
+		</Frame>
+		
+		<Frame name="InMyBagsFrame03" inherits="InMyBagsLineFrameTemplate">
+			<Anchors>
+				<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" relativeTo="InMyBagsFrame02">
+					<Offset x="0" y="-4" />
+				</Anchor>
+			</Anchors>
+			
+			<Frames>
+				<Frame name="InMyBagsLine03" inherits="InMyBagsLineItemTemplate">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeTo="InMyBagsFrame03" />
+					</Anchors>
+				</Frame>
+			</Frames>
+		</Frame>
+
+		<Frame name="InMyBagsFrame04" inherits="InMyBagsLineFrameTemplate">
+			<Anchors>
+				<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" relativeTo="InMyBagsFrame03">
+					<Offset x="0" y="-4" />
+				</Anchor>
+			</Anchors>
+			
+			<Frames>
+				<Frame name="InMyBagsLine04" inherits="InMyBagsLineItemTemplate">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeTo="InMyBagsFrame04" />
+					</Anchors>
+				</Frame>
+			</Frames>
+		</Frame>
+
+		<Frame name="InMyBagsFrame05" inherits="InMyBagsLineFrameTemplate">
+			<Anchors>
+				<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" relativeTo="InMyBagsFrame04">
+					<Offset x="0" y="-4" />
+				</Anchor>
+			</Anchors>
+			
+			<Frames>
+				<Frame name="InMyBagsLine05" inherits="InMyBagsLineItemTemplate">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeTo="InMyBagsFrame05" />
+					</Anchors>
+				</Frame>
+			</Frames>
+		</Frame>
+
+		<Frame name="InMyBagsFrame06" inherits="InMyBagsLineFrameTemplate">
+			<Anchors>
+				<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" relativeTo="InMyBagsFrame05">
+					<Offset x="0" y="-4" />
+				</Anchor>
+			</Anchors>
+			
+			<Frames>
+				<Frame name="InMyBagsLine06" inherits="InMyBagsLineItemTemplate">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeTo="InMyBagsFrame06" />
+					</Anchors>
+				</Frame>
+			</Frames>
+		</Frame>
+
+		<Frame name="InMyBagsFrame07" inherits="InMyBagsLineFrameTemplate">
+			<Anchors>
+				<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" relativeTo="InMyBagsFrame06">
+					<Offset x="0" y="-4" />
+				</Anchor>
+			</Anchors>
+			
+			<Frames>
+				<Frame name="InMyBagsLine07" inherits="InMyBagsLineItemTemplate">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeTo="InMyBagsFrame07" />
+					</Anchors>
+				</Frame>
+			</Frames>
+		</Frame>
+
+		<Frame name="InMyBagsFrame08" inherits="InMyBagsLineFrameTemplate">
+			<Anchors>
+				<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" relativeTo="InMyBagsFrame07">
+					<Offset x="0" y="-4" />
+				</Anchor>
+			</Anchors>
+			
+			<Frames>
+				<Frame name="InMyBagsLine08" inherits="InMyBagsLineItemTemplate">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeTo="InMyBagsFrame08" />
+					</Anchors>
+				</Frame>
+			</Frames>
+		</Frame>
+
+		<Frame name="InMyBagsFrame09" inherits="InMyBagsLineFrameTemplate">
+			<Anchors>
+				<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" relativeTo="InMyBagsFrame08">
+					<Offset x="0" y="-4" />
+				</Anchor>
+			</Anchors>
+			
+			<Frames>
+				<Frame name="InMyBagsLine09" hidden="false" inherits="InMyBagsLineItemTemplate">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeTo="InMyBagsFrame09" />
+					</Anchors>
+				</Frame>
+			</Frames>
+		</Frame>
+
+		<ScrollFrame name="$parentScrollFrame" inherits="FauxScrollFrameTemplate" enableMouse="true" >
+			<Size>
+				<AbsDimension x="680" y="388"/>
+			</Size>
+			<Anchors>
+				<Anchor point="TOPRIGHT" relativePoint="TOPRIGHT" relativeTo="InMyBags">
+					<Offset>
+						<AbsDimension x="-32" y="-70"/>
+					</Offset>
+				</Anchor>
+			</Anchors>
+			<Layers>
+				<Layer level="ARTWORK">
+					<Texture file="Interface\PaperDollInfoFrame\UI-Character-ScrollBar">
+						<Size>
+							<AbsDimension x="31" y="256"/>
+						</Size>
+						<Anchors>
+							<Anchor point="TOPLEFT" relativePoint="TOPRIGHT">
+								<Offset>
+									<AbsDimension x="-2" y="5"/>
+								</Offset>
+							</Anchor>
+						</Anchors>
+						<TexCoords left="0" right="0.484375" top="0" bottom="1.0"/>
+					</Texture>
+					<Texture file="Interface\PaperDollInfoFrame\UI-Character-ScrollBar">
+						<Size>
+							<AbsDimension x="31" y="106"/>
+						</Size>
+						<Anchors>
+							<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMRIGHT">
+								<Offset>
+									<AbsDimension x="-2" y="-2"/>
+								</Offset>
+							</Anchor>
+						</Anchors>
+						<TexCoords left="0.515625" right="1.0" top="0" bottom="0.4140625"/>
+					</Texture>
+				</Layer>
+			</Layers>
+			<Scripts>
+				<OnVerticalScroll>
+					--FauxScrollFrame_OnVerticalScroll(self, offset, 37, InMyBagsFrameBrowse_Update);
+					InMyBagsFrameBrowse_Update();
+				</OnVerticalScroll>
+			</Scripts>
+		</ScrollFrame>
+
+	</Frames>
+
+</Frame>
+</Ui>
