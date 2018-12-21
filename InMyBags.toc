@@ -1,6 +1,6 @@
-## Interface: 80000
-## Title: In My Bags 1.9
-## Version: 1.9
+## Interface: 80100
+## Title: In My Bags 1.10 DEV
+## Version: 1.10 DEV
 ## Notes: Lightweight pooled realm bag inventory tool. By Waldokind
 ## SavedVariables: JADBagInventory
 ## Author: waldokind@jdsoftcode.net

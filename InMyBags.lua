@@ -22,6 +22,12 @@ JADBagConfirmReset = 0			-- toggles to ensure reset is entered twice
 JADMatchString = ""				-- the search string, if ~= ""
 _NoErr = 0						-- named constant
 
+-- #####################################
+-- ##      /imbscan                   ##
+-- #####################################
+
+
+
 SlashCmdList["JADBAGSCAN"] = function(msg, theEditFrame)			-- /imbscan
 	local bag, slot, result, bagslots, bagstart, bagstop
 
@@ -100,6 +106,12 @@ SlashCmdList["JADBAGSCAN"] = function(msg, theEditFrame)			-- /imbscan
 	JADBagConfirmReset = 0					--reset delete confirmation flag on any other command
 end
 
+
+
+-- #####################################
+-- ##      /imbreset                  ##
+-- #####################################
+
 SlashCmdList["JADBAGRESET"] = function(msg, theEditFrame)		--  /imbreset
 	if ( JADBagConfirmReset > 0 ) then
 		JADBagInventory = {}
@@ -110,6 +122,12 @@ SlashCmdList["JADBAGRESET"] = function(msg, theEditFrame)		--  /imbreset
 		JADBagConfirmReset = 1
 	end
 end
+
+
+
+-- #####################################
+-- ##      /imb                       ##
+-- #####################################
 
 SlashCmdList["JADBAGLIST"] = function(msg, theEditFrame)		--  /imb,  /imb me,  /imb Name,  /imb xxx
 	local showNameList = 0

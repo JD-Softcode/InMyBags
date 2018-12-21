@@ -14,7 +14,7 @@
 			<FontString inherits="GameFontNormalLarge" justifyV="MIDDLE" setAllPoints="true" text="Item">
 				<Size x="100" y="36" />
 				<Anchors>
-					<Anchor point="TOPLEFT" relativePoint="TOPLEFT" relativeTo="$parentTopLeftCorner" >
+					<Anchor point="TOPLEFT" relativePoint="TOPLEFT" relativeTo="$parent" >
 						<Offset x="70" y="-34" />
 					</Anchor>
 				</Anchors>
@@ -22,7 +22,7 @@
 			<FontString inherits="GameFontNormalLarge" justifyV="MIDDLE" setAllPoints="true" text="Held by">
 				<Size x="150" y="36" />
 				<Anchors>
-					<Anchor point="TOPLEFT" relativePoint="TOPLEFT" relativeTo="$parentTopLeftCorner" >
+					<Anchor point="TOPLEFT" relativePoint="TOPLEFT" relativeTo="$parent" >
 						<Offset x="320" y="-34" />
 					</Anchor>
 				</Anchors>
@@ -65,7 +65,7 @@
 
 		<Frame name="InMyBagsFrame01" inherits="InMyBagsLineFrameTemplate">
 			<Anchors>
-				<Anchor point="TOPLEFT" relativePoint="TOPLEFT" relativeTo="$parentTopLeftCorner" >
+				<Anchor point="TOPLEFT" relativePoint="TOPLEFT" relativeTo="$parent" >
 					<Offset x="20" y="-70" />
 				</Anchor>
 			</Anchors>
