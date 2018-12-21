@@ -238,6 +238,7 @@ function buildListForDisplay(limitTo)
 	local money = 0
 	
 	JADMatchStringSafe = string.gsub(string.lower(JADMatchString), "%-", "%%%-") -- hyphens cannot be used in lua find search patterns without escaping
+			-- this code replaces all '-' with '%-'
 	
 	for i = 1 , #JADBagInventory do
 		if ( (limitTo==nil) or ( JADBagInventory[i].holder == limitTo) ) then
