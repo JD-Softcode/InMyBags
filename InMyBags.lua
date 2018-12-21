@@ -20,6 +20,7 @@ JADBagDisplay = {}				-- built each time the window is displayed
 JADBankWindowOpen = 0			-- toggles whenever the bank window is opened or closed
 JADBagConfirmReset = 0			-- toggles to ensure reset is entered twice
 JADMatchString = ""				-- the search string, if ~= ""
+JADMatchStringSafe = ""			-- set same as above but with all hyphens escaped with % characters for pattern matching
 _NoErr = 0						-- named constant
 
 -- #####################################
@@ -153,7 +154,7 @@ SlashCmdList["JADBAGLIST"] = function(msg, theEditFrame)		--  /imb,  /imb me,  /
 	if (showNameList == 1) then
 		showTheList(msg)
 	else
-		if ( msg and string.find(msg, "Hitem") ) then			-- is not nil & a link?
+		if ( msg and string.find(msg, "Hitem") ) then			-- is not nil & is a link?
 			local linkExtractStart = string.find(msg, "|h%[") + 3
 			local linkExtractStop  = string.find(msg, "%]|h") - 1
 			msg = string.sub(msg, linkExtractStart,  linkExtractStop)
@@ -236,9 +237,11 @@ function buildListForDisplay(limitTo)
 	local totalVendorValue = 0
 	local money = 0
 	
+	JADMatchStringSafe = string.gsub(string.lower(JADMatchString), "%-", "%%%-") -- hyphens cannot be used in lua find search patterns without escaping
+	
 	for i = 1 , #JADBagInventory do
 		if ( (limitTo==nil) or ( JADBagInventory[i].holder == limitTo) ) then
-			if ( (JADMatchString == "") or string.find(string.lower(JADBagInventory[i].name),string.lower(JADMatchString)) ) then
+			if ( (JADMatchString == "") or string.find(string.lower(JADBagInventory[i].name),JADMatchStringSafe) ) then
 		
 				displayListFoundLine = itemAlreadyInDisplayList(JADBagInventory[i].name)
 				
@@ -475,7 +478,7 @@ function InMyBagsFrameBrowse_Update()		--can be called anytime, but always when 
 	paintTheLines(math.floor(scrollPosit))
 	
 	local checkUnderMouse = GetMouseFocus():GetName();
-	if ( string.sub(checkUnderMouse,-8) == "LineIcon" ) then			--RIGHT$
+	if ( checkUnderMouse and string.sub(checkUnderMouse,-8) == "LineIcon" ) then			--RIGHT$
 		InMyBagsItem_OnMouseEnter(GetMouseFocus())						--update the tooltip
 	end
 
