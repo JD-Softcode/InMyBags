@@ -43,7 +43,7 @@
 	
 			<Scripts>
 				<OnEnter>
-					InMyBagsItem_OnMouseEnter(self);
+					JADInMyBags:Item_OnMouseEnter(self);
 				</OnEnter>
 				<OnLeave>
 					GameTooltip:Hide();
@@ -65,7 +65,7 @@
 				</Anchors>
 			</FontString>				
 			<FontString name="$parentLineHolderString" inherits="GameFontNormalLeft" justifyV="MIDDLE" setAllPoints="true">
-				<Size x="360" y="36" />
+				<Size x="400" y="36" />
 				<Anchors>
 					<Anchor point="LEFT" relativePoint="RIGHT" relativeTo="$parentLineNameText">
 						<Offset>

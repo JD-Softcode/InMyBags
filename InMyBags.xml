@@ -40,10 +40,10 @@
 
 	<Scripts>
 		<OnLoad>
-			InMyBags_OnLoad(self)
+			JADInMyBags:OnLoad()
 		</OnLoad>
 		<OnEvent>
-			InMyBags_OnEvent(self, event, ...)
+			JADInMyBags:OnEvent(event, ...)
 		</OnEvent>
 		<OnShow>
 			PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN);		<!-- Changed by Blizzard in 7.3 -->
@@ -251,7 +251,7 @@
 			<Scripts>
 				<OnVerticalScroll>
 					--FauxScrollFrame_OnVerticalScroll(self, offset, 37, InMyBagsFrameBrowse_Update);
-					InMyBagsFrameBrowse_Update();
+					JADInMyBags:FrameBrowse_Update();
 				</OnVerticalScroll>
 			</Scripts>
 		</ScrollFrame>
