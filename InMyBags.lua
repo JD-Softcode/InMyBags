@@ -16,13 +16,19 @@ BACKPACK_BAG_NAME   = "Backpack"
 ON_PERSON_BAG_NAME  = "On-person bag"
 REAGENT_BAG_NAME	= "Reagent bank"	-- NEW in 1.5
 
+JADrefreshCode		= "RefreshRefresh"
 
-JADBagInventory = {}			-- saved variable, hold all the inventory data
+
+JADBagInventory = {}			-- SAVED VARIABLE, hold all the inventory data
+JADBagAllFactionFlag = false	-- SAVED VARIABLE, show inventory across both factions (or not)
+JADBagAllRealmsFlag = false		-- SAVED VARIABLE, show inventory across all realms (or not)
+JADBagVersionTwoUpgrade = false -- SAVED VARIABLE, used to signal rebuild of database for 2.0
 JADBagDisplay = {}				-- built each time the window is displayed
 JADBankWindowOpen = 0			-- toggles whenever the bank window is opened or closed
 JADBagConfirmReset = 0			-- toggles to ensure reset is entered twice
 JADMatchString = ""				-- the search string, if ~= ""
 JADMatchStringSafe = ""			-- set same as above but with all hyphens escaped with % characters for pattern matching
+JADRememberFilterCode = ""		-- used when refreshing the list (checkbox toggled) to keep filter active
 _NoErr = 0						-- named constant
 
 
@@ -67,10 +73,13 @@ SlashCmdList["JADBAGSCAN"] = function(msg, theEditFrame)			-- /imbscan
 						local closeBracket = strfind(link,"|h",openBracket+1)
 						name = strsub(link,openBracket+3,closeBracket-2)
 						quality = qualityBroken
-						-- http://wowwiki.wikia.com/wiki/API_GetItemInfo				
+						-- http://wowwiki.wikia.com/wiki/API_GetItemInfo
+						faction = UnitFactionGroup("player") or "None"  --UnitFactionGroup can return nil
 						table.insert(JADBagInventory, {
 							["name"]		= format("%q",name),
 							["holder"]		= UnitName("player"),
+							["realm"]		= GetRealmName(),
+							["faction"]		= faction,
 							["quantity"]	= count,
 							["detailLink"]	= link,
 							["heldIn"]		= JADInMyBags:translateBagID(bag)
@@ -80,7 +89,7 @@ SlashCmdList["JADBAGSCAN"] = function(msg, theEditFrame)			-- /imbscan
 				end
 			end
 		end
-		JADInMyBags:consolidateLikeItems(UnitName("player"))
+		JADInMyBags:consolidateLikeItems(UnitName("player"), GetRealmName(), (UnitFactionGroup("player") or "None") )
 		print( "In My Bags database updated. Now tracking "..#JADBagInventory.." items.")
 	else
 		print( "An error occured trying to reset "..UnitName("player").."'s inventory" )
@@ -124,7 +133,7 @@ SlashCmdList["JADBAGLIST"] = function(msg, theEditFrame)		--  /imb,  /imb me,  /
 		local inventorySize = #JADBagInventory
 		if (inventorySize > 0 ) then
 			for i = 1,inventorySize do
-				if ( JADBagInventory[i].holder == msg ) then	-- did user type a stored player name?
+				if ( string.lower(JADBagInventory[i].holder) == string.lower(msg) ) then	-- did user type a stored player name?
 					showNameList = 1
 					i = inventorySize							-- break out of the loop
 				end
@@ -167,6 +176,30 @@ function JADInMyBags:OnEvent(event, arg1, ...)
 		InMyBagsPortrait:SetTexture("Interface\\MERCHANTFRAME\\UI-BuyBack-Icon")
 		JADBankWindowOpen = 0							-- bank is always closed on /reload
 		table.insert(UISpecialFrames, "InMyBags")		--makes it close with ESC key (silently)
+		InMyBagsFactionCheck:SetChecked(JADBagAllFactionFlag)	-- restore user setting
+		InMyBagsRealmsCheck:SetChecked(JADBagAllRealmsFlag)		-- restore user setting
+		if ( JADBagVersionTwoUpgrade == false) then 
+			StaticPopupDialogs["UPDATE_WARNING"] = {
+			  text = "|cffbbbbffInMyBags version 2|r\n\nThe inventory database must be reset.",
+			  button1 = "Reset Inventory",
+			  button2 = "Disable InMyBags",
+			  OnAccept = function()
+				  JADBagInventory = {}
+				  ChatFrame1:AddMessage( "In My Bags inventory database reset for all characters & realms.")
+				  JADBagVersionTwoUpgrade = true
+			  end,
+			  OnCancel = function()
+				  SLASH_JADBAGSCAN1  = nil	
+				  SLASH_JADBAGRESET1 = nil
+				  SLASH_JADBAGLIST1  = nil
+			  end,
+			  timeout = 0,
+			  whileDead = true,
+			  hideOnEscape = false,
+			  preferredIndex = 3,  -- avoid some UI taint, see http://www.wowace.com/announcements/how-to-avoid-some-ui-taint/
+			}	
+			StaticPopup_Show ("UPDATE_WARNING")
+		end
 	elseif event == "BANKFRAME_OPENED" then
 		JADBankWindowOpen = 1
 	elseif event == "BANKFRAME_CLOSED" then
@@ -194,9 +227,12 @@ end
 
 function JADInMyBags:purgeCharacterEntries(purgeType)
 	local total = #JADBagInventory
+	local playerName = UnitName("player")
+	local playerRealm = GetRealmName()
+	local playerFaction = UnitFactionGroup("player") or "None"
 	if (total > 0) then 
 		for i = #JADBagInventory, 1, -1 do		--count backwards else the list shrinks while it's counting up
-			if (JADBagInventory[i].holder == UnitName("player")) then
+			if (self:isSameOwner(JADBagInventory[i], playerName, playerRealm, playerFaction) ) then
 				if (purgeType == "all") then
 					table.remove(JADBagInventory, i)					-- no idea how to trap an error with this call
 				else		-- "nobank"
@@ -217,36 +253,59 @@ function JADInMyBags:buildListForDisplay(limitTo)
 	--local countAppended = 0
 	local totalVendorValue = 0
 	local money = 0
+	local testName = nil
+	local factionTexture = ""
+	local distantRealm = false
 	
 	JADMatchStringSafe = string.gsub(string.lower(JADMatchString), "%-", "%%%-") -- hyphens cannot be used in lua find search patterns without escaping
 			-- this code replaces all '-' with '%-'
+	if (limitTo ~= nil) then 
+		testName = string.lower(limitTo)
+	end
 	for i = 1 , #JADBagInventory do
-		if ( (limitTo==nil) or ( JADBagInventory[i].holder == limitTo) ) then
-			if ( (JADMatchString == "") or string.find(string.lower(JADBagInventory[i].name),JADMatchStringSafe) ) then
+		if ( (limitTo==nil) or ( string.lower(JADBagInventory[i].holder) == testName) ) then
 		
-				displayListFoundLine = self:itemAlreadyInDisplayList(JADBagInventory[i].name)
-				
-				if ( displayListFoundLine > 0 ) then
-					self:appendPlayerInventory(	displayListFoundLine,
-												JADBagInventory[i].holder,
-												JADBagInventory[i].quantity,
-												JADBagInventory[i].heldIn
-												);
-					--countAppended = countAppended + 1
-				else
-					self:addPlayerInventory( JADBagInventory[i].name,
-											 JADBagInventory[i].holder,
-											 JADBagInventory[i].quantity,
-											 JADBagInventory[i].detailLink,
-											 JADBagInventory[i].heldIn
-											 );
-					--countAdded = countAdded + 1
+			if ( JADBagAllFactionFlag or JADBagInventory[i].faction == UnitFactionGroup("player") ) then
+				if ( JADBagAllRealmsFlag or JADBagInventory[i].realm == GetRealmName() ) then
+					if ( (JADMatchString == "") or string.find(string.lower(JADBagInventory[i].name),JADMatchStringSafe) ) then
+						displayListFoundLine = self:itemAlreadyInDisplayList(JADBagInventory[i].name)
+						if (JADBagAllFactionFlag) then 
+							factionTexture = self:graphicFaction(JADBagInventory[i].faction)
+						end
+						if ( (JADBagAllRealmsFlag) and (GetRealmName() ~= JADBagInventory[i].realm) ) then
+							distantRealm = true
+						else
+							distantRealm = false
+						end
+						if ( displayListFoundLine > 0 ) then
+							self:appendPlayerInventory(	displayListFoundLine,
+														JADBagInventory[i].holder,
+														factionTexture,
+														distantRealm,
+														JADBagInventory[i].quantity,
+														JADBagInventory[i].heldIn
+														);
+							--countAppended = countAppended + 1
+						else
+							self:addPlayerInventory( JADBagInventory[i].name,
+													 JADBagInventory[i].holder,
+													 factionTexture,
+													 distantRealm,
+													 JADBagInventory[i].quantity,
+													 JADBagInventory[i].detailLink,
+													 JADBagInventory[i].heldIn
+													 );
+							--countAdded = countAdded + 1
+						end
+					end
+					money = select(11, GetItemInfo(JADBagInventory[i].detailLink))		--can sometimes return nil, so...
+					if (money) then
+						totalVendorValue = totalVendorValue + ( money * JADBagInventory[i].quantity )
+					end	
+					
 				end
 			end
-			money = select(11, GetItemInfo(JADBagInventory[i].detailLink))		--can sometimes return nil, so...
-			if (money) then
-				totalVendorValue = totalVendorValue + money
-			end			
+				
 		end
 	end
 	
@@ -257,29 +316,32 @@ function JADInMyBags:buildListForDisplay(limitTo)
 	else
 		InMyBagsVendor:SetText("Limiting list to:|n\""..JADMatchString.."\"")
 	end	
-	
---	ChatFrame1:AddMessage( "build for display created "..countAdded.." lines which contained "..countAppended.." combined records." )
+	--	ChatFrame1:AddMessage( "build for display created "..countAdded.." lines which contained "..countAppended.." combined records." )
 	return _NoErr
 end
 	
 	
-function JADInMyBags:addPlayerInventory(theName, theHolder, theQuantity, theLink, theBag)
+function JADInMyBags:addPlayerInventory(theName, theHolder, factionTexture, distantRealm, theQuantity, theLink, theBag)
 	--local bagIcon = "|TInterface\\ICONS\\INV_Misc_Bag_08:16:16:0:1|t"
-	if (theHolder == UnitName("player")) then
-		theHolder = "|cffffffdd" .. theHolder		--hilight in color the current player's name and inventory
+	if (distantRealm == true) then
+		theHolder = "|cff999955" .. theHolder
+	else
+		if (theHolder == UnitName("player") ) then
+			theHolder = "|cffffffdd" .. theHolder --hilight in color the current player's name and inventory
+		end
 	end
-
+		
 	local theTexture = select(10, GetItemInfo(theLink))			--can return nil, so...
 	
 	if theTexture == 0 or theTexture == nil then 
 		theTexture = "525134"--"|TInterface\\ICONS\\INV_Misc_QuestionMark:0|t"
 	end
-
+	
 	table.insert(JADBagDisplay, {
 		["itemName"]	= theName,
 		["icon"]		= theTexture,
 		["hyperlink"]	= theLink,
-		["holders"]		= theHolder .. ": " .. theQuantity .. " in " .. self:graphicBag(theBag) .."|r",
+		["holders"]		= factionTexture .. theHolder .. ": " .. theQuantity .. " in " .. self:graphicBag(theBag) .."|r",
 				-- the |r reset is here in case of the color shift from a few lines above, otherwise ignored
 		["totalCount"]	= theQuantity
 		}
@@ -287,11 +349,16 @@ function JADInMyBags:addPlayerInventory(theName, theHolder, theQuantity, theLink
 end
 
 
-function JADInMyBags:appendPlayerInventory(lineNum, theHolder, theQuantity, theBag)
-	if (theHolder == UnitName("player")) then
-		theHolder = "|cffffffdd" .. theHolder 
+function JADInMyBags:appendPlayerInventory(lineNum, theHolder, factionTexture, distantRealm, theQuantity, theBag)
+	if (distantRealm == true) then
+		theHolder = "|cff999955" .. theHolder
+	else
+		if (theHolder == UnitName("player") ) then
+			theHolder = "|cffffffdd" .. theHolder 
+		end
 	end
-	JADBagDisplay[lineNum].holders = JADBagDisplay[lineNum].holders .. ", " .. theHolder .. ": " .. theQuantity .. " in " .. self:graphicBag(theBag) .."|r"
+
+	JADBagDisplay[lineNum].holders = JADBagDisplay[lineNum].holders .. ", " .. factionTexture .. theHolder .. ": " .. theQuantity .. " in " .. self:graphicBag(theBag) .."|r"
 	JADBagDisplay[lineNum].totalCount = JADBagDisplay[lineNum].totalCount + theQuantity
 end
 
@@ -312,6 +379,15 @@ function JADInMyBags:graphicBag(theBag)
 	return "|TInterface\\ICONS\\"..bagTexture..":17:17:0:0|t"..theBag
 end
 
+function JADInMyBags:graphicFaction(playerFaction)
+	if ( playerFaction == "Alliance" ) then
+		return "|TInterface\\ICONS\\Achievement_PVP_A_A:17:13|t"
+	elseif ( playerFaction == "Horde" ) then
+		return "|TInterface\\ICONS\\Achievement_PVP_H_H:17:13|t"
+	else
+		return "|TInterface\\ICONS\\Spell_Nature_ElementalShields:17:13|t" -- or INV_Misc_GroupLooking
+	end
+end
 
 function JADInMyBags:itemAlreadyInDisplayList(theNameSeeking)
 	local foundAt = 0
@@ -328,20 +404,22 @@ function JADInMyBags:itemAlreadyInDisplayList(theNameSeeking)
 end
 
 
-function JADInMyBags:consolidateLikeItems(playerName)
-	local startSize = #JADBagInventory
+function JADInMyBags:consolidateLikeItems(playerName, playerRealm, playerFaction)
+	--local startSize = #JADBagInventory
 	--local playerCheckCount=0
 	--local purged = 0
 	local compareline = 1
 	repeat
-		if ( JADBagInventory[compareline].holder == playerName) then
+		if ( self:isSameOwner(JADBagInventory[compareline], playerName, playerRealm, playerFaction ) ) then
 			--playerCheckCount = playerCheckCount + 1
 			for i = #JADBagInventory, compareline+1, -1 do
-				if ( JADBagInventory[i].name == JADBagInventory[compareline].name ) then
-					if ( JADBagInventory[i].heldIn == JADBagInventory[compareline].heldIn ) then			
-						JADBagInventory[compareline].quantity = JADBagInventory[compareline].quantity + JADBagInventory[i].quantity
-						table.remove(JADBagInventory, i)
-						--purged = purged + 1
+				if ( self:isSameOwner(JADBagInventory[i], playerName, playerRealm, playerFaction ) ) then
+					if ( JADBagInventory[i].name == JADBagInventory[compareline].name ) then
+						if ( JADBagInventory[i].heldIn == JADBagInventory[compareline].heldIn ) then
+							JADBagInventory[compareline].quantity = JADBagInventory[compareline].quantity + JADBagInventory[i].quantity
+							table.remove(JADBagInventory, i)
+							--purged = purged + 1
+						end
 					end
 				end
 			end
@@ -353,12 +431,27 @@ function JADInMyBags:consolidateLikeItems(playerName)
 	return _NoErr
 end
 
+function JADInMyBags:isSameOwner(inventoryTableItem, playerName, playerRealm, playerFaction)
+	if ( (inventoryTableItem.holder == playerName) and
+		 (inventoryTableItem.realm == playerRealm) and
+		 (inventoryTableItem.faction == playerFaction) ) then
+		return true
+	else
+		return false
+	end
+end
+
 
 --**********************************************************
 
 function JADInMyBags:showTheList(playerName)
-	self:buildListForDisplay(playerName);				--create the JADBagDisplay table
+	local testPlayerName = playerName
+	if ( testPlayerName == JADrefreshCode) then
+		testPlayerName = JADRememberFilterCode
+	end
+	self:buildListForDisplay(testPlayerName);			--create the JADBagDisplay table
 	InMyBags:Show();
+	JADRememberFilterCode = testPlayerName
 	
 	InMyBagsScrollFrameScrollBar:SetValue(1);
 	if (#JADBagDisplay > 8) then
@@ -367,7 +460,6 @@ function JADInMyBags:showTheList(playerName)
 	else
 		InMyBagsScrollFrameScrollBar:SetMinMaxValues(1,1)
 		InMyBagsScrollFrameScrollBar.scrollStep = 1;
-		
 	end
 	self:paintTheLines(1)
 end
@@ -455,5 +547,15 @@ function JADInMyBags:FrameBrowse_Update()		--can be called anytime, but always w
 		JADInMyBags:Item_OnMouseEnter(GetMouseFocus())						--update the tooltip
 	end
 
+end
+
+function JADInMyBags:filterFaction(applyFilter)
+	JADBagAllFactionFlag = not applyFilter -- saved variable
+	self:showTheList(JADrefreshCode)
+end
+
+function JADInMyBags:filterRealm(applyFilter)
+	JADBagAllRealmsFlag = not applyFilter -- saved variable
+	self:showTheList(JADrefreshCode)
 end
 

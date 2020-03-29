@@ -84,7 +84,7 @@
 
 <Frame name="InMyBagsLineFrameTemplate" virtual="true">
 	<Size>
-		<AbsDimension x="664" y="40"/>
+		<AbsDimension x="656" y="40"/>
 	</Size>
 	<Layers>
 		<Layer level="BACKGROUND">			

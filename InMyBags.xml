@@ -20,10 +20,10 @@
 				</Anchors>
 			</FontString>				
 			<FontString inherits="GameFontNormalLarge" justifyV="MIDDLE" setAllPoints="true" text="Held by">
-				<Size x="150" y="36" />
+				<Size x="120" y="36" />
 				<Anchors>
 					<Anchor point="TOPLEFT" relativePoint="TOPLEFT" relativeTo="$parent" >
-						<Offset x="320" y="-34" />
+						<Offset x="250" y="-34" />
 					</Anchor>
 				</Anchors>
 			</FontString>				
@@ -62,6 +62,61 @@
 	</Scripts>
 
 	<Frames>	
+
+		<CheckButton inherits="OptionsSmallCheckButtonTemplate" name="$parentRealmsCheck" checked="false">
+			<Anchors>
+				<Anchor point="TOPLEFT" relativePoint="TOPLEFT" relativeTo="$parent">
+					<Offset x="475" y="-22" />
+				</Anchor>
+			</Anchors>
+			<Scripts>
+				<OnLoad>
+					_G[self:GetName().."Text"]:SetText("All Realms");
+				</OnLoad>
+				<OnClick>
+					if ( self:GetChecked() ) then
+						PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
+						JADInMyBags:filterRealm(false)
+					else
+						PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF);
+						JADInMyBags:filterRealm(true)
+					end
+				</OnClick>
+				<OnEnter>
+					GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+					GameTooltip:SetText("Show inventory only on this realm or all realms", nil, nil, nil, nil, true);
+				</OnEnter>
+				<OnLeave function="GameTooltip_Hide"/>
+			</Scripts>
+		</CheckButton>
+		
+		<CheckButton inherits="OptionsSmallCheckButtonTemplate" name="$parentFactionCheck" checked="false">
+			<Anchors>
+				<Anchor point="TOPLEFT" relativePoint="TOPLEFT" relativeTo="$parent">
+					<Offset x="475" y="-42" />
+				</Anchor>
+			</Anchors>
+			<Scripts>
+				<OnLoad>
+					_G[self:GetName().."Text"]:SetText("Both Factions");
+				</OnLoad>
+				<OnClick>
+					if ( self:GetChecked() ) then
+						PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
+						JADInMyBags:filterFaction(false);
+					else
+						PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF);
+						JADInMyBags:filterFaction(true);
+					end
+				</OnClick>
+				<OnEnter>
+					GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+					GameTooltip:SetText("Show inventory only for this faction or both factions", nil, nil, nil, nil, true);
+				</OnEnter>
+				<OnLeave function="GameTooltip_Hide"/>
+			</Scripts>
+		</CheckButton>
+		
 
 		<Frame name="InMyBagsFrame01" inherits="InMyBagsLineFrameTemplate">
 			<Anchors>
@@ -222,7 +277,7 @@
 				<Layer level="ARTWORK">
 					<Texture file="Interface\PaperDollInfoFrame\UI-Character-ScrollBar">
 						<Size>
-							<AbsDimension x="31" y="256"/>
+							<AbsDimension x="31" y="289"/>
 						</Size>
 						<Anchors>
 							<Anchor point="TOPLEFT" relativePoint="TOPRIGHT">
