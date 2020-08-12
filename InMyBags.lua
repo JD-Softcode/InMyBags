@@ -9,12 +9,14 @@ SLASH_JADBAGLIST1  = "/imb"			--show the In My Bags window; optionally follow wi
 
 JADInMyBags = {}				-- function namespace
 
+
 --You can change these names but will need to reset/rebuild the database for all characters when you do
 MAIN_BANK_BAG_NAME  = "Main bank"
 OTHER_BANK_BAG_NAME = "Bank bag"
 BACKPACK_BAG_NAME   = "Backpack"
 ON_PERSON_BAG_NAME  = "On-person bag"
-REAGENT_BAG_NAME	= "Reagent bank"	-- NEW in 1.5
+KEYRING_BAG_NAME	= "Keyring"
+REAGENT_BAG_NAME	= "Reagent bank"
 
 JADrefreshCode		= "RefreshRefresh"
 
@@ -30,6 +32,7 @@ JADMatchString = ""				-- the search string, if ~= ""
 JADMatchStringSafe = ""			-- set same as above but with all hyphens escaped with % characters for pattern matching
 JADRememberFilterCode = ""		-- used when refreshing the list (checkbox toggled) to keep filter active
 _NoErr = 0						-- named constant
+JADisWoWClassic = select(4, GetBuildInfo()) < 20000
 
 
 -- #####################################
@@ -40,20 +43,24 @@ SlashCmdList["JADBAGSCAN"] = function(msg, theEditFrame)			-- /imbscan
 	local bag, slot, result, bagslots, bagstart, bagstop
 
 	InMyBags:Hide();
+		--REAGENTBANK_CONTAINER Reagent bank (-3)					
+		--KEYRING_CONTAINER: Keyring and currency bag (-2)		added late in Classic
 		--BANK_CONTAINER Main storage area in the bank (-1)
-		--REAGENTBANK_CONTAINER Reagent bank (-3)					NEW in 1.5
-		--KEYRING_CONTAINER: Keyring and currency bag (-2)			not currently implemented
 		--BACKPACK_CONTAINER: Backpack (0)
 		--1 through NUM_BAG_SLOTS: Bag slots (as presented in the default UI, numbered right(!) to left)
 		--NUM_BAG_SLOTS + 1 through NUM_BAG_SLOTS + NUM_BANKBAGSLOTS: Bank bag slots (as presented in the default UI, numbered left to right)
 	if (JADBankWindowOpen > 0)  then
-		bagslots = NUM_BAG_SLOTS + NUM_BANKBAGSLOTS + 2		-- would be 3 if not skipping Keyring/-2
-		bagstart = REAGENTBANK_CONTAINER					-- lowest numbered bag		
+		bagslots = NUM_BAG_SLOTS + NUM_BANKBAGSLOTS + 3		-- includes mutually-exclusive keyring and reagent bank
+		if JADisWoWClassic then
+			bagstart = KEYRING_CONTAINER
+		else
+			bagstart = REAGENTBANK_CONTAINER					-- lowest numbered bag
+		end
 		bagstop = NUM_BAG_SLOTS + NUM_BANKBAGSLOTS
 		result = JADInMyBags:purgeCharacterEntries("all")
 	else		-- bank window is not open					-- NEW in 1.4
-		bagslots = NUM_BAG_SLOTS + 1
-		bagstart = BACKPACK_CONTAINER
+		bagslots = NUM_BAG_SLOTS + 2
+		bagstart = KEYRING_CONTAINER
 		bagstop = NUM_BAG_SLOTS		
 		result = JADInMyBags:purgeCharacterEntries("nobank")
 	end
@@ -61,19 +68,27 @@ SlashCmdList["JADBAGSCAN"] = function(msg, theEditFrame)			-- /imbscan
 	if (result == _NoErr) then 
 		--print( "In My Bags cataloging items from "..bagslots.." containers." )
 		for bag = bagstart, bagstop do
-		if (bag ~= KEYRING_CONTAINER) then
-			--print( "Bag "..bag.." has "..GetContainerNumSlots(bag).." slots")
+			local skip = false
+			if (JADisWoWClassic and bag == REAGENTBANK_CONTAINER) then skip = true end
+			if ((not JADisWoWClassic) and bag == KEYRING_CONTAINER) then skip = true end
+			if (JADBankWindowOpen <= 0 and bag == BANK_CONTAINER) then skip = true end
+			if (not skip) then
+				--print( "Bag "..bag.." has "..GetContainerNumSlots(bag).." slots")
 				for slot = 1, GetContainerNumSlots(bag) do
-					local texture, count, locked, qualityBroken, readable, lootable, link, isFiltered = GetContainerItemInfo(bag, slot)
-					--if (bag == BACKPACK_CONTAINER) then 
-					--	print(texture, count, locked, qualityBroken, readable, lootable, link, isFiltered)
-					--end
+					local texture, count, locked, qualityBroken, readable, lootable, link = GetContainerItemInfo(bag, slot)
+					local name, quality
 					if texture then
-						local openBracket = strfind(link,"|h")
-						local closeBracket = strfind(link,"|h",openBracket+1)
-						name = strsub(link,openBracket+3,closeBracket-2)
-						quality = qualityBroken
-						-- http://wowwiki.wikia.com/wiki/API_GetItemInfo
+						if JADisWoWClassic then
+							name, link, quality = GetItemInfo(link)
+			--				name, link, quality, iLevel, reqLevel, class, subclass, maxStack, equipSlot, texture, vendorPrice = GetItemInfo("itemLink")
+			--													   ^^ as in AH ^^
+						else
+							local openBracket = strfind(link,"|h")
+							local closeBracket = strfind(link,"|h",openBracket+1)
+							name = strsub(link,openBracket+3,closeBracket-2)
+							quality = qualityBroken
+							-- http://wowwiki.wikia.com/wiki/API_GetItemInfo
+						end
 						faction = UnitFactionGroup("player") or "None"  --UnitFactionGroup can return nil
 						table.insert(JADBagInventory, {
 							["name"]		= format("%q",name),
@@ -172,7 +187,7 @@ end
 function JADInMyBags:OnEvent(event, arg1, ...)
 	if event == "PLAYER_ENTERING_WORLD" then			-- set stuff up
 		InMyBagsTitleText:SetText("In My Bags")
-		InMyBagsPortrait:SetTexture("Interface\\ICONS\\INV_Misc_QuestionMark")   -- try and get this cached to avoid green boxes
+		--InMyBagsPortrait:SetTexture("Interface\\ICONS\\INV_Misc_QuestionMark")   -- try and get this cached to avoid green boxes
 		InMyBagsPortrait:SetTexture("Interface\\MERCHANTFRAME\\UI-BuyBack-Icon")
 		JADBankWindowOpen = 0							-- bank is always closed on /reload
 		table.insert(UISpecialFrames, "InMyBags")		--makes it close with ESC key (silently)
@@ -212,8 +227,10 @@ function JADInMyBags:translateBagID (bag)
 	local itemSource
 	if (bag == BANK_CONTAINER) then
 		itemSource = MAIN_BANK_BAG_NAME
-	elseif (bag == REAGENTBANK_CONTAINER) then				-- NEW in 1.5
+	elseif (bag == REAGENTBANK_CONTAINER) then
 		itemSource = REAGENT_BAG_NAME
+	elseif (bag == KEYRING_CONTAINER) then
+		itemSource = KEYRING_BAG_NAME
 	elseif (bag == BACKPACK_CONTAINER) then
 		itemSource = BACKPACK_BAG_NAME
 	elseif (bag <= NUM_BAG_SLOTS) then
@@ -333,8 +350,12 @@ function JADInMyBags:addPlayerInventory(theName, theHolder, factionTexture, dist
 		
 	local theTexture = select(10, GetItemInfo(theLink))			--can return nil, so...
 	
-	if theTexture == 0 or theTexture == nil then 
-		theTexture = "525134"--"|TInterface\\ICONS\\INV_Misc_QuestionMark:0|t"
+	if theTexture == nil or theTexture == 0 then
+		if JADisWoWClassic then
+			theTexture = "|TInterface\\ICONS\\WoWUnknownItem01:0|t"
+		else
+			theTexture = "525134"--"|TInterface\\ICONS\\INV_Misc_QuestionMark:0|t"
+		end
 	end
 	
 	table.insert(JADBagDisplay, {
@@ -366,9 +387,15 @@ end
 function JADInMyBags:graphicBag(theBag)
 	local bagTexture
 	if (theBag == MAIN_BANK_BAG_NAME) then
-		bagTexture = "ACHIEVEMENT_GUILDPERK_MOBILEBANKING"		-- wooden chest opening showing gold coins
+		if JADisWoWClassic then
+			bagTexture = "INV_Misc_Bag_13"							-- squarish brown backpack with red glow
+		else
+			bagTexture = "ACHIEVEMENT_GUILDPERK_MOBILEBANKING"		-- wooden chest opening showing gold coins
+		end
 	elseif (theBag == REAGENT_BAG_NAME) then
 		bagTexture = "INV_Box_03"								-- large green wooden box (new in 1.5)
+	elseif (theBag == KEYRING_BAG_NAME) then
+		bagTexture = "INV_Misc_Key_03"
 	elseif (theBag == OTHER_BANK_BAG_NAME) then
 		bagTexture = "INV_Misc_Bag_10_Red"						-- plump red bag tied shut (Santa-style)
 	elseif (theBag == BACKPACK_BAG_NAME) then
@@ -381,9 +408,17 @@ end
 
 function JADInMyBags:graphicFaction(playerFaction)
 	if ( playerFaction == "Alliance" ) then
-		return "|TInterface\\ICONS\\Achievement_PVP_A_A:17:13|t"
+		if JADisWoWClassic then
+			return "|TInterface\\COMMON\\icon-alliance:24:24|t"
+		else
+			return "|TInterface\\ICONS\\Achievement_PVP_A_A:17:13|t"
+		end
 	elseif ( playerFaction == "Horde" ) then
-		return "|TInterface\\ICONS\\Achievement_PVP_H_H:17:13|t"
+		if JADisWoWClassic then
+			return "|TInterface\\COMMON\\icon-horde:24:24|t"
+		else
+			return "|TInterface\\ICONS\\Achievement_PVP_H_H:17:13|t"
+		end
 	else
 		return "|TInterface\\ICONS\\Spell_Nature_ElementalShields:17:13|t" -- or INV_Misc_GroupLooking
 	end
@@ -482,13 +517,17 @@ function JADInMyBags:paintTheLines(startLine)
 		if ( i+startLine <= #JADBagDisplay ) then											--in case a really short list
 			showName, _, quality = GetItemInfo(JADBagDisplay[i+startLine].hyperlink);		--can return nil, so...
 			if ( (showName == nil) or (quality == nil) ) then			-- had to be put in for KeyStone
-				local link = JADBagDisplay[i+startLine].hyperlink
-				local openBracket = strfind(link,"|h")
-				local closeBracket = strfind(link,"|h",openBracket+1)
-				showName = strsub(link,openBracket+3,closeBracket-2)
-				showName = strsub(link, 1, 10) .. showName
-				--showName = "Unknown"
-				--print(JADBagDisplay[i+startLine].icon)
+				if JADisWoWClassic then
+					showName = "Unknown"
+				else
+					local link = JADBagDisplay[i+startLine].hyperlink
+					local openBracket = strfind(link,"|h")
+					local closeBracket = strfind(link,"|h",openBracket+1)
+					showName = strsub(link,openBracket+3,closeBracket-2)
+					showName = strsub(link, 1, 10) .. showName
+					--showName = "Unknown"
+					--print(JADBagDisplay[i+startLine].icon)
+				end
 				quality = 0
 			end
 			qualityColor = select(4, GetItemQualityColor(quality))

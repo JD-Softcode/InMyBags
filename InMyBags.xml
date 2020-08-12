@@ -46,10 +46,10 @@
 			JADInMyBags:OnEvent(event, ...)
 		</OnEvent>
 		<OnShow>
-			PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN);		<!-- Changed by Blizzard in 7.3 -->
+			PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)		<!-- Changed by Blizzard in 7.3 -->
 		</OnShow>
 		<OnHide>
-			PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE);	<!-- Changed by Blizzard in 7.3 -->
+			PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)	<!-- Changed by Blizzard in 7.3 -->
 		</OnHide>
 
         <OnDragStart>
