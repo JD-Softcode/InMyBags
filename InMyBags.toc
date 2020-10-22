@@ -1,7 +1,7 @@
 ## Interface: 80300
-## Title: In My Bags 3.0 DEV
-## Version: 3.0 DEV
-## Notes: Lightweight pooled realm character bag inventory tool. By Waldokind
+## Title: In My Bags 3.0
+## Version: 3.0
+## Notes: Lightweight character bag inventory tool pooled across realms and factions. By Waldokind
 ## SavedVariables: JADBagInventory, JADBagAllFactionFlag, JADBagAllRealmsFlag, JADBagVersionTwoUpgrade
 ## Author: waldokind@jdsoftcode.net
 ## X-Website: http://www.jdsoftcode.net

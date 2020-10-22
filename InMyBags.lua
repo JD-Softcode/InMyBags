@@ -1,14 +1,10 @@
-SLASH_JADBAGSCAN1  = "/imbscan"		--collect all inventory data; xxxcan only be called when at the bankxxx
-									--	  NEW in 1.4: can be called away from bank to update personal bags
-SLASH_JADBAGRESET1 = "/imbreset"	--purge all inventory data for all characters; there is no undo  ;)
-									--    NEW in 1.3: type it twice to confirm
+SLASH_JADBAGSCAN1  = "/imbscan"		--collect all inventory data
+SLASH_JADBAGRESET1 = "/imbreset"	--purge all inventory data for all characters, must type 2x; there is no undo  ;)
 SLASH_JADBAGLIST1  = "/imb"			--show the In My Bags window; optionally follow with a name to see only that inventory
 									--    or with letters not a name for a search
-									--    NEW in 1.3: shift-click an inventory item to search for it
-
+									--    shift-click an inventory item to search for it
 
 JADInMyBags = {}				-- function namespace
-
 
 --You can change these names but will need to reset/rebuild the database for all characters when you do
 MAIN_BANK_BAG_NAME  = "Main bank"
@@ -187,14 +183,13 @@ end
 function JADInMyBags:OnEvent(event, arg1, ...)
 	if event == "PLAYER_ENTERING_WORLD" then			-- set stuff up
 		InMyBagsTitleText:SetText("In My Bags")
-		--InMyBagsPortrait:SetTexture("Interface\\ICONS\\INV_Misc_QuestionMark")   -- try and get this cached to avoid green boxes
 		InMyBagsPortrait:SetTexture("Interface\\MERCHANTFRAME\\UI-BuyBack-Icon")
 		JADBankWindowOpen = 0							-- bank is always closed on /reload
 		table.insert(UISpecialFrames, "InMyBags")		--makes it close with ESC key (silently)
 		InMyBagsFactionCheck:SetChecked(JADBagAllFactionFlag)	-- restore user setting
 		InMyBagsRealmsCheck:SetChecked(JADBagAllRealmsFlag)		-- restore user setting
 		if ( JADBagVersionTwoUpgrade == false) then 
-			StaticPopupDialogs["UPDATE_WARNING"] = {
+			StaticPopupDialogs["IMB_UPDATE_WARNING"] = {
 			  text = "|cffbbbbffInMyBags version 2|r\n\nThe inventory database must be reset.",
 			  button1 = "Reset Inventory",
 			  button2 = "Disable InMyBags",
@@ -213,7 +208,7 @@ function JADInMyBags:OnEvent(event, arg1, ...)
 			  hideOnEscape = false,
 			  preferredIndex = 3,  -- avoid some UI taint, see http://www.wowace.com/announcements/how-to-avoid-some-ui-taint/
 			}	
-			StaticPopup_Show ("UPDATE_WARNING")
+			StaticPopup_Show ("IMB_UPDATE_WARNING")
 		end
 	elseif event == "BANKFRAME_OPENED" then
 		JADBankWindowOpen = 1
