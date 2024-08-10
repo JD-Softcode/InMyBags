@@ -12,7 +12,9 @@ OTHER_BANK_BAG_NAME = "Bank bag"
 BACKPACK_BAG_NAME   = "Backpack"
 ON_PERSON_BAG_NAME  = "On-person bag"
 KEYRING_BAG_NAME	= "Keyring"
-REAGENT_BAG_NAME	= "Reagent bank"
+REAGENT_BAG_NAME	= "Reagent bag"
+REAGENT_BANK_NAME   = "Reagent bank"
+WARBANK_BANK_NAME   = "Warband bank"
 
 JADrefreshCode		= "RefreshRefresh"
 
@@ -20,7 +22,7 @@ JADrefreshCode		= "RefreshRefresh"
 JADBagInventory = {}			-- SAVED VARIABLE, hold all the inventory data
 JADBagAllFactionFlag = false	-- SAVED VARIABLE, show inventory across both factions (or not)
 JADBagAllRealmsFlag = false		-- SAVED VARIABLE, show inventory across all realms (or not)
-JADBagVersionTwoUpgrade = false -- SAVED VARIABLE, used to signal rebuild of database for 2.0
+JADBagVersionThreeUpgrade = false -- SAVED VARIABLE, used to signal rebuild of database for 4.0
 JADBagDisplay = {}				-- built each time the window is displayed
 JADBankWindowOpen = 0			-- toggles whenever the bank window is opened or closed
 JADBagConfirmReset = 0			-- toggles to ensure reset is entered twice
@@ -39,37 +41,48 @@ SlashCmdList["JADBAGSCAN"] = function(msg, theEditFrame)			-- /imbscan
 	local bag, slot, result, bagslots, bagstart, bagstop
 
 	InMyBags:Hide();
+		--see https://warcraft.wiki.gg/wiki/BagID
 		--REAGENTBANK_CONTAINER Reagent bank (-3)					
 		--KEYRING_CONTAINER: Keyring and currency bag (-2)		added late in Classic
-		--BANK_CONTAINER Main storage area in the bank (-1)
+		--BANK_CONTAINER Front-page storage area in the bank (-1)
 		--BACKPACK_CONTAINER: Backpack (0)
-		--1 through NUM_BAG_SLOTS: Bag slots (as presented in the default UI, numbered right(!) to left)
-		--NUM_BAG_SLOTS + 1 through NUM_BAG_SLOTS + NUM_BANKBAGSLOTS: Bank bag slots (as presented in the default UI, numbered left to right)
+		--1 through NUM_BAG_SLOTS: On-character bag slots (as presented in the default UI, numbered right(!) to left)
+		--next 1 (or next NUM_REAGENTBAG_SLOTS): On-character reagent bag
+		--next 0 through NUM_BANKBAGSLOTS: Bank bag slots (as presented in the default UI, numbered left to right)
+		--next 1 through 5: Account Warbank slots
 	if (JADBankWindowOpen > 0)  then
-		bagslots = NUM_BAG_SLOTS + NUM_BANKBAGSLOTS + 3		-- includes mutually-exclusive keyring and reagent bank
+		bagslots = NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS + NUM_BANKBAGSLOTS + 5 + 3	-- warbank + mutually-exclusive keyring and reagent bank
 		if JADisWoWClassic then
 			bagstart = KEYRING_CONTAINER
 		else
 			bagstart = REAGENTBANK_CONTAINER					-- lowest numbered bag
 		end
-		bagstop = NUM_BAG_SLOTS + NUM_BANKBAGSLOTS
+		bagstop = NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS + NUM_BANKBAGSLOTS
 		result = JADInMyBags:purgeCharacterEntries("all")
 	else		-- bank window is not open					-- NEW in 1.4
 		bagslots = NUM_BAG_SLOTS + 2
 		bagstart = KEYRING_CONTAINER
-		bagstop = NUM_BAG_SLOTS		
+		bagstop = NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS		
 		result = JADInMyBags:purgeCharacterEntries("nobank")
 	end
 	
-	if (result == _NoErr) then 
-		--print( "In My Bags cataloging items from "..bagslots.." containers." )
+	if (result == _NoErr) then
+	
+	
+		print( "In My Bags cataloging items from "..bagslots.." containers." )
+		
+		
 		for bag = bagstart, bagstop do
 			local skip = false
 			if (JADisWoWClassic and bag == REAGENTBANK_CONTAINER) then skip = true end
 			if ((not JADisWoWClassic) and bag == KEYRING_CONTAINER) then skip = true end
 			if (JADBankWindowOpen <= 0 and bag == BANK_CONTAINER) then skip = true end
 			if (not skip) then
-				--print( "Bag "..bag.." has "..GetContainerNumSlots(bag).." slots")
+			
+			
+				print( "Bag "..bag.." has "..GetContainerNumSlots(bag).." slots")
+				
+				
 				for slot = 1, GetContainerNumSlots(bag) do
 					local texture, count, locked, qualityBroken, readable, lootable, link = GetContainerItemInfo(bag, slot)
 					local name, quality
@@ -83,7 +96,7 @@ SlashCmdList["JADBAGSCAN"] = function(msg, theEditFrame)			-- /imbscan
 							local closeBracket = strfind(link,"|h",openBracket+1)
 							name = strsub(link,openBracket+3,closeBracket-2)
 							quality = qualityBroken
-							-- http://wowwiki.wikia.com/wiki/API_GetItemInfo
+							-- https://warcraft.wiki.gg/wiki/API_GetItemInfo
 						end
 						faction = UnitFactionGroup("player") or "None"  --UnitFactionGroup can return nil
 						table.insert(JADBagInventory, {
@@ -188,15 +201,15 @@ function JADInMyBags:OnEvent(event, arg1, ...)
 		table.insert(UISpecialFrames, "InMyBags")		--makes it close with ESC key (silently)
 		InMyBagsFactionCheck:SetChecked(JADBagAllFactionFlag)	-- restore user setting
 		InMyBagsRealmsCheck:SetChecked(JADBagAllRealmsFlag)		-- restore user setting
-		if ( JADBagVersionTwoUpgrade == false) then 
+		if ( JADBagVersionThreeUpgrade == false) then 
 			StaticPopupDialogs["IMB_UPDATE_WARNING"] = {
-			  text = "|cffbbbbffInMyBags version 2|r\n\nThe inventory database must be reset.",
+			  text = "|cffbbbbffInMyBags version 1.3|r\n\nThe inventory database must be reset.",
 			  button1 = "Reset Inventory",
 			  button2 = "Disable InMyBags",
 			  OnAccept = function()
 				  JADBagInventory = {}
 				  ChatFrame1:AddMessage( "In My Bags inventory database reset for all characters & realms.")
-				  JADBagVersionTwoUpgrade = true
+				  JADBagVersionThreeUpgrade = true
 			  end,
 			  OnCancel = function()
 				  SLASH_JADBAGSCAN1  = nil	
@@ -207,7 +220,7 @@ function JADInMyBags:OnEvent(event, arg1, ...)
 			  whileDead = true,
 			  hideOnEscape = false,
 			  preferredIndex = 3,  -- avoid some UI taint, see http://www.wowace.com/announcements/how-to-avoid-some-ui-taint/
-			}	
+			}
 			StaticPopup_Show ("IMB_UPDATE_WARNING")
 		end
 	elseif event == "BANKFRAME_OPENED" then
@@ -223,15 +236,19 @@ function JADInMyBags:translateBagID (bag)
 	if (bag == BANK_CONTAINER) then
 		itemSource = MAIN_BANK_BAG_NAME
 	elseif (bag == REAGENTBANK_CONTAINER) then
-		itemSource = REAGENT_BAG_NAME
+		itemSource = REAGENT_BANK_NAME
 	elseif (bag == KEYRING_CONTAINER) then
 		itemSource = KEYRING_BAG_NAME
 	elseif (bag == BACKPACK_CONTAINER) then
 		itemSource = BACKPACK_BAG_NAME
 	elseif (bag <= NUM_BAG_SLOTS) then
 		itemSource = ON_PERSON_BAG_NAME
-	else 
+	elseif (bag <= NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS) then
+		itemSource = REAGENT_BAG_NAME
+	elseif (bag <= NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS + NUM_BANKBAGSLOTS) then
 		itemSource = OTHER_BANK_BAG_NAME
+	else 
+		itemSource = WARBANK_BANK_NAME
 	end
 	return itemSource
 end
@@ -383,18 +400,22 @@ function JADInMyBags:graphicBag(theBag)
 	local bagTexture
 	if (theBag == MAIN_BANK_BAG_NAME) then
 		if JADisWoWClassic then
-			bagTexture = "INV_Misc_Bag_13"							-- squarish brown backpack with red glow
+			bagTexture = "INV_Misc_Bag_13"						-- squarish brown backpack with red glow
 		else
-			bagTexture = "ACHIEVEMENT_GUILDPERK_MOBILEBANKING"		-- wooden chest opening showing gold coins
+			bagTexture = "ACHIEVEMENT_GUILDPERK_MOBILEBANKING"	-- wooden chest opening showing gold coins
 		end
-	elseif (theBag == REAGENT_BAG_NAME) then
+	elseif (theBag == REAGENT_BANK_NAME) then
 		bagTexture = "INV_Box_03"								-- large green wooden box (new in 1.5)
+	elseif (theBag == REAGENT_BAG_NAME) then
+		bagTexture = "inv_misc_bag_herbpouch"					-- green bag on belt with leaves
 	elseif (theBag == KEYRING_BAG_NAME) then
 		bagTexture = "INV_Misc_Key_03"
 	elseif (theBag == OTHER_BANK_BAG_NAME) then
 		bagTexture = "INV_Misc_Bag_10_Red"						-- plump red bag tied shut (Santa-style)
 	elseif (theBag == BACKPACK_BAG_NAME) then
 		bagTexture = "INV_Misc_Bag_08"							-- leather backpack with buckle
+	elseif (theBag = WARBANK_BANK_NAME) then
+		bagTexture = "item_bastion_paragonchest_03"				-- wooden chest with lock opening showing gold coins
 	else
 		bagTexture = "INV_Misc_Bag_09_Blue"						-- blue bag attached to a belt
 	end															-- Void Storage: INV_Misc_ShadowEgg
@@ -576,7 +597,7 @@ function JADInMyBags:FrameBrowse_Update()		--can be called anytime, but always w
 
 	self:paintTheLines(math.floor(scrollPosit))
 	
-	local checkUnderMouse = GetMouseFocus():GetName();
+	local checkUnderMouse = GetMouseFoci()[1]:GetName();
 	if ( checkUnderMouse and string.sub(checkUnderMouse,-8) == "LineIcon" ) then			--RIGHT$
 		JADInMyBags:Item_OnMouseEnter(GetMouseFocus())						--update the tooltip
 	end
