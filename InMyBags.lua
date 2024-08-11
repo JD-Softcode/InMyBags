@@ -47,7 +47,7 @@ SlashCmdList["JADBAGSCAN"] = function(msg, theEditFrame)			-- /imbscan
 	InMyBags:Hide();
 		--see https://warcraft.wiki.gg/wiki/BagID
 		--REAGENTBANK_CONTAINER Reagent bank (-3)					
-		--KEYRING_CONTAINER: Keyring and currency bag (-2)		added late in Classic
+		--KEYRING_CONTAINER: Keyring and currency bag (-2)		added late in Classic; but is nil in Retail
 		--BANK_CONTAINER Front-page storage area in the bank (-1)
 		--BACKPACK_CONTAINER: Backpack (0)
 		--1 through NUM_BAG_SLOTS: On-character bag slots (as presented in the default UI, numbered right(!) to left)
@@ -76,7 +76,6 @@ SlashCmdList["JADBAGSCAN"] = function(msg, theEditFrame)			-- /imbscan
 		for bag = bagstart, bagstop do
 			local skip = false
 			if (JADisWoWClassic and bag == REAGENTBANK_CONTAINER) then skip = true end
-			--if ((not JADisWoWClassic) and bag == KEYRING_CONTAINER) then skip = true end -- KEYRING_CONTAINER is now null so this stopped too early
 			if (JADBankWindowOpen <= 0 and bag == BANK_CONTAINER) then skip = true end
 			if (not skip) then
 
@@ -107,7 +106,8 @@ SlashCmdList["JADBAGSCAN"] = function(msg, theEditFrame)			-- /imbscan
 						local bagName = JADInMyBags:translateBagID(bag)
 						local holderRealm = GetRealmName()					
 						local holderName = UnitName("player")
-						if (bagName == WARBANK_BANK_NAME) then
+						
+						if bagName == WARBANK_BANK_NAME then -- special handling for all Warband items; not character specific
 							holderName = WARBANK_BANK_HOLDER_NAME
 							holderRealm = "all"
 							faction = "None"
@@ -196,7 +196,7 @@ SlashCmdList["JADBAGLIST"] = function(msg, theEditFrame)		--  /imb,  /imb me,  /
 	end
 	JADBagConfirmReset = 0				  --reset delete confirmation flag on any other command
 	
-	-- Work-around for the missing textures when window is first opened
+	-- Work-around for the missing textures when window is first opened; open it again!
 	if JADIMBFirstOpen then
 		C_Timer.After(0.2, function()
 			JADTheIMBFunction(JADRememberFilterCode)	
@@ -247,7 +247,7 @@ function JADInMyBags:OnEvent(event, arg1, ...)
 			  timeout = 0,
 			  whileDead = true,
 			  hideOnEscape = false,
-			  preferredIndex = 3,  -- avoid some UI taint, see http://www.wowace.com/announcements/how-to-avoid-some-ui-taint/
+			  preferredIndex = 3,  -- avoid some UI taint
 			}
 			StaticPopup_Show ("IMB_UPDATE_WARNING")
 		end
@@ -261,19 +261,19 @@ end
 
 function JADInMyBags:translateBagID (bag)
 	local itemSource
-	if (bag == BANK_CONTAINER) then
+	if bag == BANK_CONTAINER then
 		itemSource = MAIN_BANK_BAG_NAME
-	elseif (bag == REAGENTBANK_CONTAINER) then
+	elseif bag == REAGENTBANK_CONTAINER then
 		itemSource = REAGENT_BANK_NAME
-	elseif (bag == KEYRING_CONTAINER) then
+	elseif ( KEYRING_CONTAINER and bag == KEYRING_CONTAINER ) then
 		itemSource = KEYRING_BAG_NAME
-	elseif (bag == BACKPACK_CONTAINER) then
+	elseif bag == BACKPACK_CONTAINER then
 		itemSource = BACKPACK_BAG_NAME
-	elseif (bag <= NUM_BAG_SLOTS) then
+	elseif bag <= NUM_BAG_SLOTS then
 		itemSource = ON_PERSON_BAG_NAME
-	elseif (bag <= NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS) then
+	elseif bag <= NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS then
 		itemSource = REAGENT_BAG_NAME
-	elseif (bag <= NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS + NUM_BANKBAGSLOTS) then
+	elseif bag <= NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS + NUM_BANKBAGSLOTS then
 		itemSource = OTHER_BANK_BAG_NAME
 	else 
 		itemSource = WARBANK_BANK_NAME
@@ -283,14 +283,15 @@ end
 
 
 function JADInMyBags:purgeCharacterEntries(purgeType)
+	-- Purge the database of the current character's inventory
 	JADInMyBags:purgeNamedCharacterEntries(purgeType, UnitName("player"), GetRealmName(), ( UnitFactionGroup("player") or "None" ) )
-	-- If at the main bank, we reset the warband bank contents else the items duplicate
+	-- If at the main bank, reset the warband bank contents too (or else the items will duplicate)
 	if ( purgeType == "all" ) then
 		local firstWarbandBagNum = NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS + NUM_BANKBAGSLOTS + 1
 		-- But skip this if another character on the account has the warband bank locked-down
-		-- They won't be deleted, but won't be re-created either, so warband bank remains as-is
-		if ( C_Container.GetContainerNumSlots(firstWarbandBagNum) > 0 ) then
-			JADInMyBags:purgeNamedCharacterEntries(purgeType, "All", "all", "None")
+		-- Items won't be deleted, but they won't be re-created either, so warband bank remains as-is
+		if C_Container.GetContainerNumSlots(firstWarbandBagNum) > 0 then
+			JADInMyBags:purgeNamedCharacterEntries(purgeType, WARBANK_BANK_HOLDER_NAME, "all", "None")
 		end
 	end
 	return _NoErr
@@ -331,46 +332,47 @@ function JADInMyBags:buildListForDisplay(limitTo)
 		testName = string.lower(limitTo)
 	end
 	for i = 1 , #JADBagInventory do
-		if ( (limitTo==nil) or ( string.lower(JADBagInventory[i].holder) == testName) ) then
+		local itemI = JADBagInventory[i]
+		if ( (limitTo==nil) or ( string.lower(itemI.holder) == testName) ) then
 		
-			if ( JADBagAllFactionFlag or JADBagInventory[i].faction == UnitFactionGroup("player") or JADBagInventory[i].heldIn == WARBANK_BANK_NAME ) then
-				if ( JADBagAllRealmsFlag or JADBagInventory[i].realm == GetRealmName() or JADBagInventory[i].heldIn == WARBANK_BANK_NAME ) then
-					if ( (JADMatchString == "") or string.find(string.lower(JADBagInventory[i].name),JADMatchStringSafe) ) then
-						displayListFoundLine = self:itemAlreadyInDisplayList(JADBagInventory[i].name)
-						if (JADBagAllFactionFlag) then 
-							factionTexture = self:graphicFaction(JADBagInventory[i].faction)
+			if ( JADBagAllFactionFlag or itemI.faction == UnitFactionGroup("player") or itemI.heldIn == WARBANK_BANK_NAME ) then
+				if ( JADBagAllRealmsFlag or itemI.realm == GetRealmName() or itemI.heldIn == WARBANK_BANK_NAME ) then
+					if ( (JADMatchString == "") or string.find(string.lower(itemI.name),JADMatchStringSafe) ) then
+						displayListFoundLine = self:itemAlreadyInDisplayList(itemI.name)
+						if JADBagAllFactionFlag then 
+							factionTexture = self:graphicFaction(itemI.faction)
 						end
-						if ( (JADBagAllRealmsFlag) and (GetRealmName() ~= JADBagInventory[i].realm) ) then
+						if ( (JADBagAllRealmsFlag) and (GetRealmName() ~= itemI.realm) ) then
 							distantRealm = true
 						else
 							distantRealm = false
 						end
-						if ( displayListFoundLine > 0 ) then
+						if displayListFoundLine > 0 then
 							-- add another player's item info to an existing line
 							self:appendPlayerInventory(	displayListFoundLine,
-														JADBagInventory[i].holder,
+														itemI.holder,
 														factionTexture,
 														distantRealm,
-														JADBagInventory[i].quantity,
-														JADBagInventory[i].heldIn
+														itemI.quantity,
+														itemI.heldIn
 														);
 							--countAppended = countAppended + 1
 						else
 							-- create a new line for a unique item
-							self:addPlayerInventory( JADBagInventory[i].name,
-													 JADBagInventory[i].holder,
+							self:addPlayerInventory( itemI.name,
+													 itemI.holder,
 													 factionTexture,
 													 distantRealm,
-													 JADBagInventory[i].quantity,
-													 JADBagInventory[i].detailLink,
-													 JADBagInventory[i].heldIn
+													 itemI.quantity,
+													 itemI.detailLink,
+													 itemI.heldIn
 													 );
 							--countAdded = countAdded + 1
 						end
 					end
-					money = select(11, GetItemInfo(JADBagInventory[i].detailLink))		--can sometimes return nil, so...
-					if (money) then
-						totalVendorValue = totalVendorValue + ( money * JADBagInventory[i].quantity )
+					money = select(11, GetItemInfo(itemI.detailLink))		--can sometimes return nil, so...
+					if money then
+						totalVendorValue = totalVendorValue + ( money * itemI.quantity )
 					end	
 					
 				end
@@ -381,7 +383,7 @@ function JADInMyBags:buildListForDisplay(limitTo)
 	
 	table.sort(JADBagDisplay, function(item1, item2) return item1.itemName < item2.itemName end )
 	
-	if (JADMatchString == "") then
+	if JADMatchString == "" then
 		InMyBagsVendor:SetText("Total vendor value:|n"..GetCoinTextureString(totalVendorValue))
 	else
 		InMyBagsVendor:SetText("Limiting list to:|n\""..JADMatchString.."\"")
@@ -394,22 +396,22 @@ end
 function JADInMyBags:addPlayerInventory(theName, theHolder, factionTexture, distantRealm, theQuantity, theLink, theBag)
 	--local bagIcon = "|TInterface\\ICONS\\INV_Misc_Bag_08:16:16:0:1|t"
 	local nameSeparator = ": "
-	if (distantRealm == true) then
+	if distantRealm then
 		theHolder = "|cff999955" .. theHolder
 	else
-		if (theHolder == UnitName("player") ) then
+		if theHolder == UnitName("player") then
 			theHolder = "|cffffffdd" .. theHolder --hilight in color the current player's name and inventory
 		end
 	end
 	
-	if ( theBag == WARBANK_BANK_NAME ) then
+	if theBag == WARBANK_BANK_NAME then
 		theHolder = "|cffffff00"
 		nameSeparator = ""
 	end
 		
 	local theTexture = select(10, GetItemInfo(theLink))			--can return nil, so...
 	
-	if theTexture == nil or theTexture == 0 then
+	if ( theTexture == nil or theTexture == 0 ) then
 		if JADisWoWClassic then
 			theTexture = "|TInterface\\ICONS\\WoWUnknownItem01:0|t"
 		else
@@ -431,14 +433,14 @@ end
 
 function JADInMyBags:appendPlayerInventory(lineNum, theHolder, factionTexture, distantRealm, theQuantity, theBag)
 	local nameSeparator = ": "
-	if (distantRealm == true) then
+	if distantRealm then
 		theHolder = "|cff999955" .. theHolder
 	else
-		if (theHolder == UnitName("player") ) then
+		if theHolder == UnitName("player") then
 			theHolder = "|cffffffdd" .. theHolder 
 		end
 	end
-	if ( theBag == WARBANK_BANK_NAME ) then
+	if theBag == WARBANK_BANK_NAME then
 		theHolder = "|cffffff00"
 		nameSeparator = ""
 	end
@@ -451,23 +453,23 @@ end
 
 function JADInMyBags:graphicBag(theBag)
 	local bagTexture
-	if (theBag == MAIN_BANK_BAG_NAME) then
+	if theBag == MAIN_BANK_BAG_NAME then
 		if JADisWoWClassic then
 			bagTexture = "INV_Misc_Bag_13"						-- squarish brown backpack with red glow
 		else
 			bagTexture = "ACHIEVEMENT_GUILDPERK_MOBILEBANKING"	-- wooden chest opening showing gold coins
 		end
-	elseif (theBag == REAGENT_BANK_NAME) then
+	elseif theBag == REAGENT_BANK_NAME then
 		bagTexture = "INV_Box_03"								-- large green wooden box (new in 1.5)
-	elseif (theBag == REAGENT_BAG_NAME) then
+	elseif theBag == REAGENT_BAG_NAME then
 		bagTexture = "inv_misc_bag_herbpouch"					-- green bag on belt with leaves
-	elseif (theBag == KEYRING_BAG_NAME) then
+	elseif ( KEYRING_BAG_NAME and theBag == KEYRING_BAG_NAME ) then
 		bagTexture = "INV_Misc_Key_03"
-	elseif (theBag == OTHER_BANK_BAG_NAME) then
+	elseif theBag == OTHER_BANK_BAG_NAME then
 		bagTexture = "INV_Misc_Bag_10_Red"						-- plump red bag tied shut (Santa-style)
-	elseif (theBag == BACKPACK_BAG_NAME) then
+	elseif theBag == BACKPACK_BAG_NAME then
 		bagTexture = "INV_Misc_Bag_08"							-- leather backpack with buckle
-	elseif (theBag == WARBANK_BANK_NAME) then
+	elseif theBag == WARBANK_BANK_NAME then
 		bagTexture = "item_bastion_paragonchest_03"				-- wooden chest with lock opening showing gold coins
 	else
 		bagTexture = "INV_Misc_Bag_09_Blue"						-- blue bag attached to a belt
@@ -476,27 +478,27 @@ function JADInMyBags:graphicBag(theBag)
 end
 
 function JADInMyBags:graphicFaction(playerFaction)
-	if ( playerFaction == "Alliance" ) then
+	if playerFaction == "Alliance" then
 		if JADisWoWClassic then
 			return "|TInterface\\COMMON\\icon-alliance:24:24|t"
 		else
 			return "|TInterface\\ICONS\\Achievement_PVP_A_A:17:13|t"
 		end
-	elseif ( playerFaction == "Horde" ) then
+	elseif playerFaction == "Horde" then
 		if JADisWoWClassic then
 			return "|TInterface\\COMMON\\icon-horde:24:24|t"
 		else
 			return "|TInterface\\ICONS\\Achievement_PVP_H_H:17:13|t"
 		end
 	else
-		return "|TInterface\\ICONS\\Spell_Nature_ElementalShields:17:13|t" -- or INV_Misc_GroupLooking
+		return "|TInterface\\ICONS\\ability_vehicle_shellshieldgenerator_green:17:13|t"
 	end
 end
 
 function JADInMyBags:itemAlreadyInDisplayList(theNameSeeking)
 	local foundAt = 0
 	local displaySize = #JADBagDisplay
-	if (displaySize > 0 ) then
+	if displaySize > 0 then
 		for i = 1,displaySize do
 			if ( JADBagDisplay[i].itemName == theNameSeeking ) then
 				foundAt = i
@@ -514,12 +516,12 @@ function JADInMyBags:consolidateLikeItems(playerName, playerRealm, playerFaction
 	--local purged = 0
 	local compareline = 1
 	repeat
-		if ( self:isSameOwner(JADBagInventory[compareline], playerName, playerRealm, playerFaction ) ) then
+		if self:isSameOwner( JADBagInventory[compareline], playerName, playerRealm, playerFaction ) then
 			--playerCheckCount = playerCheckCount + 1
 			for i = #JADBagInventory, compareline+1, -1 do
-				if ( self:isSameOwner(JADBagInventory[i], playerName, playerRealm, playerFaction ) ) then
-					if ( JADBagInventory[i].name == JADBagInventory[compareline].name ) then
-						if ( JADBagInventory[i].heldIn == JADBagInventory[compareline].heldIn ) then
+				if self:isSameOwner( JADBagInventory[i], playerName, playerRealm, playerFaction ) then
+					if JADBagInventory[i].name == JADBagInventory[compareline].name then
+						if JADBagInventory[i].heldIn == JADBagInventory[compareline].heldIn then
 							JADBagInventory[compareline].quantity = JADBagInventory[compareline].quantity + JADBagInventory[i].quantity
 							table.remove(JADBagInventory, i)
 							--purged = purged + 1
@@ -550,7 +552,7 @@ end
 
 function JADInMyBags:showTheList(playerName)
 	local testPlayerName = playerName
-	if ( testPlayerName == JADrefreshCode) then
+	if testPlayerName == JADrefreshCode then
 		testPlayerName = JADRememberFilterCode
 	end
 	self:buildListForDisplay(testPlayerName);			--create the JADBagDisplay table
@@ -558,7 +560,7 @@ function JADInMyBags:showTheList(playerName)
 	JADRememberFilterCode = testPlayerName
 	
 	InMyBagsScrollFrameScrollBar:SetValue(1);
-	if (#JADBagDisplay > 8) then
+	if #JADBagDisplay > 8 then
 		InMyBagsScrollFrameScrollBar:SetMinMaxValues(1,#JADBagDisplay-8)
 		InMyBagsScrollFrameScrollBar.scrollStep = 8;		--how much to move when clicking the up/down buttons, or mouse wheel
 	else
@@ -570,11 +572,11 @@ end
 
 
 function JADInMyBags:paintTheLines(startLine)
-	if ( startLine+8 > #JADBagDisplay) then			-- last list item never above the bottom...
+	if startLine+8 > #JADBagDisplay then			-- last list item never above the bottom...
 		startLine = #JADBagDisplay - 8
 	end
 	startLine = startLine - 1
-	if ( startLine < 0 ) then						-- unless it's a really short list!
+	if startLine < 0 then						-- unless it's a really short list!
 		startLine = 0
 	end
 	
@@ -583,7 +585,7 @@ function JADInMyBags:paintTheLines(startLine)
 	local qualityColor
 
 	for i = 1, 9 do
-		if ( i+startLine <= #JADBagDisplay ) then											--in case a really short list
+		if i+startLine <= #JADBagDisplay then											--in case a really short list
 			showName, _, quality = GetItemInfo(JADBagDisplay[i+startLine].hyperlink);		--can return nil, so...
 			if ( (showName == nil) or (quality == nil) ) then			-- had to be put in for KeyStone
 				if JADisWoWClassic then
@@ -621,7 +623,7 @@ function JADInMyBags:Item_OnMouseEnter(thisLine)
 	local original = thisLine:GetName()
 	-- turn InMyBagsLine0xLineIcon  into  InMyBagsLine0xLineHyperlink
 	local converted = string.gsub(original, "Icon", "Hyperlink")
-	if ( _G[converted]:GetText() ) then 	--not nil
+	if _G[converted]:GetText() then 	--not nil
 		GameTooltip:SetOwner(thisLine, "ANCHOR_RIGHT")
 		GameTooltip:SetHyperlink(_G[converted]:GetText())
 		GameTooltip:Show()
@@ -637,13 +639,13 @@ function JADInMyBags:FrameBrowse_Update()		--can be called anytime, but always w
 	local scrollPosit = InMyBagsScrollFrameScrollBar:GetValue();
 	local minScroll, maxScroll = InMyBagsScrollFrameScrollBar:GetMinMaxValues();
 	
-	if (scrollPosit > minScroll) then
+	if scrollPosit > minScroll then
 		InMyBagsScrollFrameScrollBarScrollUpButton:Enable();
 	else
 		InMyBagsScrollFrameScrollBarScrollUpButton:Disable();
 	end
 	
-	if (scrollPosit < maxScroll) then
+	if scrollPosit < maxScroll then
 		InMyBagsScrollFrameScrollBarScrollDownButton:Enable();
 	else
 		InMyBagsScrollFrameScrollBarScrollDownButton:Disable();
