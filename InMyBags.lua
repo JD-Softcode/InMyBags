@@ -32,6 +32,7 @@ JADMatchStringSafe = ""			-- set same as above but with all hyphens escaped with
 JADRememberFilterCode = ""		-- used when refreshing the list (checkbox toggled) to keep filter active
 _NoErr = 0						-- named constant
 JADisWoWClassic = select(4, GetBuildInfo()) < 20000
+JADisWoWOlder = select(4, GetBuildInfo()) < 100000
 
 JADTheIMBFunction = nil			-- convenience handle to the /imb function so we can call it ourselves
 JADIMBFirstOpen = true			-- missing textures are a problem on first open; use this to re-fire the /imb command 1st time
@@ -55,19 +56,19 @@ SlashCmdList["JADBAGSCAN"] = function(msg, theEditFrame)			-- /imbscan
 		--next 0 through NUM_BANKBAGSLOTS: Bank bag slots (as presented in the default UI, numbered left to right)
 		--next 1 through 5: Account Warbank slots
 	if (JADBankWindowOpen > 0)  then
-		bagslots = NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS + NUM_BANKBAGSLOTS + 5 + 3	-- warbank + mutually-exclusive keyring and reagent bank
+		bagslots = NUM_BAG_SLOTS + JADIMB_NUM_REAGENTBAG_SLOTS + NUM_BANKBAGSLOTS + 5 + 3	-- warbank + mutually-exclusive keyring and reagent bank
 		if JADisWoWClassic then
 			bagstart = KEYRING_CONTAINER
 		else
 			bagstart = REAGENTBANK_CONTAINER					-- lowest numbered bag
 		end
-		bagstop = NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS + NUM_BANKBAGSLOTS + 5  -- 5 for warband bank
+		bagstop = NUM_BAG_SLOTS + JADIMB_NUM_REAGENTBAG_SLOTS + NUM_BANKBAGSLOTS + 5  -- 5 for warband bank
 		result = JADInMyBags:purgeCharacterEntries("all")
 	else		-- bank window is not open					-- NEW in 1.4
 		bagslots = NUM_BAG_SLOTS + 2
 		bagstart = KEYRING_CONTAINER
 		if (bagstart == nil) then bagstart = BACKPACK_CONTAINER end
-		bagstop = NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS		
+		bagstop = NUM_BAG_SLOTS + JADIMB_NUM_REAGENTBAG_SLOTS		
 		result = JADInMyBags:purgeCharacterEntries("nobank")
 	end
 	
@@ -229,6 +230,7 @@ function JADInMyBags:OnEvent(event, arg1, ...)
 		InMyBagsFactionCheck:SetChecked(JADBagAllFactionFlag)	-- restore user setting
 		InMyBagsRealmsCheck:SetChecked(JADBagAllRealmsFlag)		-- restore user setting
 		JADIMBFirstOpen = true
+		JADIMB_NUM_REAGENTBAG_SLOTS = NUM_REAGENTBAG_SLOTS or 0 -- classic has this constant as nil; make zero if so
 		if ( JADBagVersionThreeUpgrade == false) then 
 			StaticPopupDialogs["IMB_UPDATE_WARNING"] = {
 			  text = "|cffbbbbffInMyBags version 4.0|r\n\nThe inventory database must be reset.",
@@ -271,9 +273,9 @@ function JADInMyBags:translateBagID (bag)
 		itemSource = BACKPACK_BAG_NAME
 	elseif bag <= NUM_BAG_SLOTS then
 		itemSource = ON_PERSON_BAG_NAME
-	elseif bag <= NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS then
+	elseif bag <= NUM_BAG_SLOTS + JADIMB_NUM_REAGENTBAG_SLOTS then
 		itemSource = REAGENT_BAG_NAME
-	elseif bag <= NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS + NUM_BANKBAGSLOTS then
+	elseif bag <= NUM_BAG_SLOTS + JADIMB_NUM_REAGENTBAG_SLOTS + NUM_BANKBAGSLOTS then
 		itemSource = OTHER_BANK_BAG_NAME
 	else 
 		itemSource = WARBANK_BANK_NAME
@@ -287,7 +289,7 @@ function JADInMyBags:purgeCharacterEntries(purgeType)
 	JADInMyBags:purgeNamedCharacterEntries(purgeType, UnitName("player"), GetRealmName(), ( UnitFactionGroup("player") or "None" ) )
 	-- If at the main bank, reset the warband bank contents too (or else the items will duplicate)
 	if ( purgeType == "all" ) then
-		local firstWarbandBagNum = NUM_BAG_SLOTS + NUM_REAGENTBAG_SLOTS + NUM_BANKBAGSLOTS + 1
+		local firstWarbandBagNum = NUM_BAG_SLOTS + JADIMB_NUM_REAGENTBAG_SLOTS + NUM_BANKBAGSLOTS + 1
 		-- But skip this if another character on the account has the warband bank locked-down
 		-- Items won't be deleted, but they won't be re-created either, so warband bank remains as-is
 		if C_Container.GetContainerNumSlots(firstWarbandBagNum) > 0 then
@@ -653,7 +655,12 @@ function JADInMyBags:FrameBrowse_Update()		--can be called anytime, but always w
 
 	self:paintTheLines(math.floor(scrollPosit))
 	
-	local checkUnderMouse = GetMouseFoci()[1]:GetName();
+	local checkUnderMouse
+	if JADisWoWOlder then
+		checkUnderMouse = GetMouseFocus():GetName();
+	else
+		 checkUnderMouse = GetMouseFoci()[1]:GetName();
+	end
 	if ( checkUnderMouse and string.sub(checkUnderMouse,-8) == "LineIcon" ) then			--RIGHT$
 		JADInMyBags:Item_OnMouseEnter(GetMouseFocus())						--update the tooltip
 	end

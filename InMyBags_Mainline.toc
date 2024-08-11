@@ -1,0 +1,12 @@
+## Interface: 110000
+## Title: In My Bags 4.0
+## Version: 4.0
+## Notes: Lightweight character bag inventory tool pooled across realms and factions. By Waldokind
+## SavedVariables: JADBagInventory, JADBagAllFactionFlag, JADBagAllRealmsFlag, JADBagVersionThreeUpgrade
+## IconTexture: Interface\AddOns\InMyBags\inmybags.tga
+## Author: waldokind@jdsoftcode.net
+## X-Website: http://www.jdsoftcode.net
+
+InMyBags.lua
+InMyBagsTemplates.xml
+InMyBags.xml
